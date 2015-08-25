@@ -27,7 +27,7 @@ class PyfastaReader(object):
             GX_START_CHROMOSOME        First chromosome that should be read
             GX_START_LOCATION          Start location for fasta reading
         '''
-        
+        self.verbose = GX_CONFIG['GX_VERBOSE']
         self.start_chromosome = None
         self.start_location = 0
         
@@ -69,17 +69,23 @@ class PyfastaReader(object):
         '''
         startchr = self.start_chromosome
         start = self.start_location
-        chrs = self.fasta.keys()
+        chrs = [x[0] for x in sorted(self.fasta.index.items(), key=lambda a: a[1][0])]
         for chr in chrs:
-            
+            segcount = 0
+            if self.verbose:
+                print "Reading chr %s" % chr
             # Skip forward if a starting chr was defined
             if startchr is not None and startchr != chr:
                 continue
             else:
                 startchr = None
                 
-            end = start + self.segment_size
-            seg = Segment(start, end, next(Fasta.as_kmers(self.fasta[chr],self.segment_size))[1],chr)
-            yield seg
-            start = end
+            for kmer in Fasta.as_kmers(self.fasta[chr],self.segment_size):
+                end = start + self.segment_size                
+                seg = Segment(start, end, kmer[1] ,chr)
+                segcount += 1
+                if self.verbose and segcount % 1000 == 0:
+                    print "Read %d segments" % segcount
+                yield seg
+                start = end
         

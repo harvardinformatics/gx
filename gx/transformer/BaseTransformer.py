@@ -59,9 +59,8 @@ class BaseTransformer(object):
         pass
     
     
-    def finalize(self,annotationreader,gwriter):
+    def finalize(self,gwriter,annotationreader=None):
         '''
         Does the final writing for the writer and closes the file
         '''
         gwriter.write()
-        gwriter.close()

@@ -21,8 +21,9 @@ def getClassFromName(classname):
         for comp in parts[1:]:
             m = getattr(m, comp)            
         return m
-    except ImportError:
-        print "Unable to import %s" % classname
+    except Exception as e:
+        e.usermsg = "Unable to import %s.  The class may be misspelled or missing from your PYTHONPATH" % classname
+        raise
     return None
 
 
@@ -60,7 +61,7 @@ class Segment(object):
         '''
         Nucleotide base string for this segment
         '''
-        pass
+        return self.sequence
     
     def getAnnotations(self):
         '''

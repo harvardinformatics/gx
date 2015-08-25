@@ -22,4 +22,5 @@ class SerialDispatcher(object):
         '''
         Call write on the file
         '''
-        gwriter.write()
+        transformer.finalize(gwriter,annotreader)
+     

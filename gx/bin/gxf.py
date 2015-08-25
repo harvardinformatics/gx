@@ -101,6 +101,11 @@ USAGE
                 'action'    : 'store_true',
              },
             {
+                'name'      : 'GX_VERBOSE',
+                'switches'  : ['-v','--verbose'],
+                'help'      : 'Verbose mode',
+             },
+            {
                 'name'      : 'GX_GENOME_READER',
                 'switches'  : ['--genome-reader'],
                 'required'  : False,
@@ -148,6 +153,12 @@ USAGE
                 'name'      : 'GX_OUTPUT_GENOME_FILE',
                 'switches'  : ['-o','--output-file'],
                 'help'      : 'The output fasta file',
+             },
+            {
+                'name'      : 'GX_FASTA_COLUMN_NUMBER',
+                'switches'  : ['--output-columns'],
+                'help'      : 'The number of columns written out',
+                'default'   : 60,
              }
         ]
         
@@ -167,7 +178,6 @@ USAGE
                 
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument("-v", "--verbose", dest="verbose", action="count", help="set verbosity level [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
         
         
@@ -188,11 +198,8 @@ USAGE
             parameterdef['name'] = name
             
             
-        args = parser.parse_args()
-        verbose = args.verbose
-
-        if verbose > 0:
-            print("Verbose mode on")
+        args = parser.parse_args()            
+            
         
         # Retrieve the parameter values into the GXCONFIG hash
         for parameterdef in parameterdefs:
@@ -209,9 +216,29 @@ USAGE
         segdispatcher = None
         transformer = None
         
-        # Create the genome reader
-        if 'GX_GENOME_READER' not in GXCONFIG:
-            raise Exception('GX_GENOME_READER must be defined')
+        # Check for input file
+        if 'GX_INPUT_GENOME_FILE' not in GXCONFIG or not GXCONFIG['GX_INPUT_GENOME_FILE']:
+            e = Exception('--input-file/GX_INPUT_GENOME_FILE must be defined')
+            e.usermsg = '--input-file/GX_INPUT_GENOME_FILE must be defined'
+            raise e
+        
+        # Check for output file
+        if 'GX_OUTPUT_GENOME_FILE' not in GXCONFIG or not GXCONFIG['GX_OUTPUT_GENOME_FILE']:
+            e = Exception('--output-file/GX_OUTPUT_GENOME_FILE must be defined')
+            e.usermsg = '--output-file/GX_OUTPUT_GENOME_FILE must be defined'
+            raise e
+        
+        # Check for genome reader
+        if 'GX_GENOME_READER' not in GXCONFIG or not GXCONFIG['GX_GENOME_READER']:
+            e =  Exception('--genome-reader/GX_GENOME_READER must be defined')
+            e.usermsg = '--genome-reader/GX_GENOME_READER must be defined'
+            raise e
+
+        # Check for segment size
+        if 'GX_SEGMENT_SIZE' not in GXCONFIG or not GXCONFIG['GX_SEGMENT_SIZE']:
+            e =  Exception('--segment-size/GX_SEGMENT_SIZE must be defined')
+            e.usermsg = '--segment-size/GX_SEGMENT_SIZE must be defined'
+            raise e
 
         # Add the default package to the class if it is not a full package name
         if GXCONFIG['GX_GENOME_READER'].find('.') == -1:
@@ -221,8 +248,9 @@ USAGE
         
         
         # Create the genome writer
-        if 'GX_GENOME_WRITER' not in GXCONFIG:
-            raise Exception('GX_GENOME_WRITER must be defined')
+        if 'GX_GENOME_WRITER' not in GXCONFIG or not GXCONFIG['GX_GENOME_WRITER']:
+            e =  Exception('--genome-writer/GX_GENOME_WRITER must be defined')
+            e.usermsg = '--genome-writer/GX_GENOME_WRITER must be defined'
         
         if GXCONFIG['GX_GENOME_WRITER'].find('.') == -1:
             GXCONFIG['GX_GENOME_WRITER'] = 'gx.io.%s' % GXCONFIG['GX_GENOME_WRITER']
@@ -231,8 +259,9 @@ USAGE
         
 
         # Create the segment dispatcher
-        if 'GX_SEGMENT_DISPATCHER' not in GXCONFIG:
-            raise Exception('GX_SEGMENT_DISPATCHER must be defined')
+        if 'GX_SEGMENT_DISPATCHER' not in GXCONFIG or not GXCONFIG['GX_SEGMENT_DISPATCHER']:
+            e = Exception('--segment-dispatcher/GX_SEGMENT_DISPATCHER must be defined')
+            e.usermsg = '--segment-dispatcher/GX_SEGMENT_DISPATCHER must be defined'
         
         if GXCONFIG['GX_SEGMENT_DISPATCHER'].find('.') == -1:
             GXCONFIG['GX_SEGMENT_DISPATCHER'] = 'gx.dispatcher.%s' % GXCONFIG['GX_SEGMENT_DISPATCHER']
@@ -251,8 +280,9 @@ USAGE
 #         
         
         # Create the transformer
-        if 'GX_TRANSFORMER' not in GXCONFIG:
-            raise Exception('A genome transformer (GX_TRANSFORMER) must be defined')
+        if 'GX_TRANSFORMER' not in GXCONFIG or not GXCONFIG['GX_TRANSFORMER']:
+            e = Exception('A genome transformer (GX_TRANSFORMER) must be defined')
+            e.usermsg = 'A genome transformer (GX_TRANSFORMER) must be defined'
         
         if GXCONFIG['GX_TRANSFORMER'].find('.') == -1:
             GXCONFIG['GX_TRANSFORMER'] = 'gx.transformer.%s' % GXCONFIG['GX_TRANSFORMER']
@@ -274,12 +304,19 @@ USAGE
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
         return 0
-    except Exception, e:
-        sys.stderr.write(program_name + ": " + repr(e) + "\n")
+    except Exception as e:
         if 'GX_DEBUG' in GXCONFIG and GXCONFIG['GX_DEBUG']:
+            if hasattr(e, 'usermsg'):
+                sys.stderr.write('Error : %s\n' % e.usermsg)
+            sys.stderr.write(program_name + ": " + repr(e) + "\n")
             sys.stderr.write(traceback.format_exc() + "\n")
             sys.stderr.write(repr(GXCONFIG) + "\n")
-        sys.stderr.write("  for help use --help\n")
+        else:
+            if hasattr(e, 'usermsg'):
+                sys.stderr.write('Error : %s\n' % e.usermsg)
+            else:
+                sys.stderr.write(program_name + ": " + repr(e) + "\n")
+            sys.stderr.write("  for help use --help\n")         
         return 2
 
 if __name__ == "__main__":

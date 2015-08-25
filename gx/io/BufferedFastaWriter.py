@@ -6,6 +6,7 @@ All rights reserved.
 
 @author: Aaron Kitzmiller
 """
+from collections import OrderedDict
 
 class BufferedFastaWriter(object):
     '''
@@ -18,8 +19,8 @@ class BufferedFastaWriter(object):
         '''
         Constructor
         '''
-        self.segments = {}
-        self.column_number = 80
+        self.verbose = GX_CONFIG['GX_VERBOSE']
+        self.segments = OrderedDict()
         
         if 'GX_FASTA_COLUMN_NUMBER' in GX_CONFIG:
             try:
@@ -28,7 +29,7 @@ class BufferedFastaWriter(object):
                 raise Exception('Value of GX_FASTA_COLUMN_NUMBER %s is not an integer' % str(GX_CONFIG['GX_FASTA_COLUMN_NUMBER']))
         
         
-                # Check the output file
+        # Check the output file
         if 'GX_OUTPUT_GENOME_FILE' not in GX_CONFIG.keys():
             raise Exception('Output genome file must be defined')
         
@@ -45,8 +46,7 @@ class BufferedFastaWriter(object):
         '''
         Add segments to the cache
         '''
-        for seg in segments:
-            
+        for seg in segments:   
             if seg.chr not in self.segments:
                 self.segments[seg.chr] = []
                 
@@ -56,17 +56,29 @@ class BufferedFastaWriter(object):
         '''
         Actually writes the segments to the file
         '''
-        
         f = open(self.output_file_name,'w')
         
+        segcount = 0
+        seqstr = ''
         for chr in self.segments.keys():
             f.write(">%s\n" % chr)
             segs = self.segments[chr]
             seqstr = ''
             for seg in segs:
                 seqstr += seg.sequence
-                while len(seqstr) > self.column_number:
-                    f.write("%s\n" % seqstr[:self.column_number])
-                    seqstr = seqstr[self.column_number:]
+                if self.column_number:
+                    while len(seqstr) > self.column_number:
+                        f.write("%s\n" % seqstr[:self.column_number])
+                        seqstr = seqstr[self.column_number:]
+                else:
+                    f.write(seqstr)
+                    seqstr = ''   
+                segcount += 1
+                if self.verbose and segcount % 1000 == 0:
+                    print "Wrote %d segments" % segcount                  
+            if not self.column_number:
+                f.write("\n")
+            if seqstr:
+                f.write(seqstr + "\n")
         f.close()
         
